@@ -1,0 +1,143 @@
+# OpenEnv Environment Manifest
+# This file describes the environment for the OpenEnv framework and Hugging Face deployment
+
+metadata:
+  name: medical-diagnostic-env
+  display_name: Medical Diagnostic Environment
+  
+  version: 1.0.0
+  
+  description: |
+    An RL training environment where LLMs learn to diagnose medical conditions.
+    
+    Agents must:
+    - Ask clinically relevant questions
+    - Order appropriate diagnostic tests
+    - Make accurate final diagnoses
+    
+    The environment provides rich reward signals for:
+    - Good clinical questions (+0.05 each)
+    - Informative diagnostic tests (+0.10 each)
+    - Correct final diagnoses (+1.0)
+    
+    Features:
+    - 3 difficulty levels (Easy, Medium, Hard)
+    - 6 unique patient cases
+    - 15-step episodes maximum
+    - Realistic medical knowledge base
+    - Deterministic grading with 0.0-1.0 scores
+  
+  authors:
+    - Team SYNAPSE
+  
+  license: MIT
+  
+  tags:
+    - rl
+    - medical
+    - diagnosis
+    - healthcare
+    - real-world
+    - rl-training
+    - llm
+    - openenv
+  
+  keywords:
+    - medical diagnosis
+    - clinical reasoning
+    - reinforcement learning
+    - LLM training
+    - multi-turn interaction
+
+interface:
+  action:
+    type: DiagnosticAction
+    fields:
+      - name: action_type
+        type: str
+        description: "ask_question, order_test, or submit_diagnosis"
+      - name: question
+        type: Optional[str]
+        description: "Clinical question to ask (when action_type=ask_question)"
+      - name: test_name
+        type: Optional[str]
+        description: "Diagnostic test to order (when action_type=order_test)"
+      - name: diagnosis
+        type: Optional[str]
+        description: "Final diagnosis (when action_type=submit_diagnosis)"
+  
+  observation:
+    type: PatientObservation
+    fields:
+      - name: message
+        type: str
+        description: "Feedback from the environment"
+      - name: patient_response
+        type: Optional[str]
+        description: "Patient's answer to question asked"
+      - name: test_result
+        type: Optional[Dict]
+        description: "Result of ordered test"
+      - name: questions_asked
+        type: List[str]
+        description: "All questions asked so far"
+      - name: tests_completed
+        type: List[str]
+        description: "All tests ordered so far"
+      - name: patient_data_revealed
+        type: Dict
+        description: "What the agent has learned about the patient"
+      - name: steps_taken
+        type: int
+        description: "Current step number"
+      - name: max_steps
+        type: int
+        description: "Maximum steps allowed (15)"
+      - name: done
+        type: bool
+        description: "Is episode over?"
+      - name: reward
+        type: Optional[float]
+        description: "Reward for this action (0.0-1.0)"
+
+tasks:
+  - name: easy_diagnosis
+    difficulty: easy
+    description: "Diagnose common medical conditions (flu, UTI, migraine)"
+    expected_accuracy: 0.80
+    test_cases: 3
+  
+  - name: medium_diagnosis
+    difficulty: medium
+    description: "Differentiate between similar conditions requiring clinical judgment"
+    expected_accuracy: 0.60
+    test_cases: 2
+  
+  - name: hard_diagnosis
+    difficulty: hard
+    description: "Diagnose rare and complex conditions requiring extensive reasoning"
+    expected_accuracy: 0.30
+    test_cases: 2
+
+deployment:
+  supports_concurrent_sessions: true
+  max_concurrent_envs: 100
+  recommended_workers: 4
+  
+  environment_variables:
+    - name: PORT
+      default: "8000"
+      description: "Port to run server on"
+    - name: WORKERS
+      default: "4"
+      description: "Number of uvicorn workers"
+
+performance:
+  avg_episode_length: 8  # steps
+  max_episode_length: 15  # steps
+  avg_episode_time: 30  # seconds (with LLM inference)
+  supporting_concurrent_generations: 100
+
+urls:
+  documentation: "https://github.com/meta-pytorch/OpenEnv"
+  support: "https://github.com/meta-pytorch/OpenEnv/issues"

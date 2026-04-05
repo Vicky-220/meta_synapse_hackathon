@@ -1,0 +1,42 @@
+# Docker Compose for local development and testing
+#
+# Start with: docker-compose up --build
+# Access server at: http://localhost:8000
+# Docs at: http://localhost:8000/docs
+# WebSocket at: ws://localhost:8000/ws
+
+version: "3.9"
+
+services:
+  medical-diagnostic-env:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    
+    container_name: medical-diagnostic-env
+    
+    ports:
+      - "8000:8000"
+    
+    environment:
+      - PORT=8000
+      - WORKERS=2  # Reduce for local development
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    
+    volumes:
+      - .:/app  # For live code reloading during development (optional)
+    
+    networks:
+      - medical-net
+
+networks:
+  medical-net:
+    driver: bridge
