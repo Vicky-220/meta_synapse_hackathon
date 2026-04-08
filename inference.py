@@ -35,7 +35,7 @@ from models import DiagnosticAction
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-IMAGE_NAME = os.getenv("IMAGE_NAME", "medical-diagnostic-env:latest")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME", "medical-diagnostic-env:latest")
 ENV_URL = os.getenv("ENV_URL", "ws://localhost:8000/ws")
 BENCHMARK = os.getenv("BENCHMARK", "medical_diagnostic_env")
 
@@ -420,7 +420,7 @@ async def run_all_tasks() -> Dict:
         try:
             result = await run_episode_async(
                 client,
-                IMAGE_NAME,
+                LOCAL_IMAGE_NAME,
                 difficulty=difficulty,
                 task_name=task_name,
             )

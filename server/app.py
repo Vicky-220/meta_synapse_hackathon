@@ -17,7 +17,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models import DiagnosticAction, PatientObservation
-from environment import MedicalDiagnosticEnvironment
+from .environment import MedicalDiagnosticEnvironment
 
 
 # Create FastAPI app with all endpoints

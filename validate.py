@@ -34,7 +34,7 @@ class ValidationResult:
         self.error = error
 
     def __str__(self):
-        status = "✅ PASS" if self.passed else "❌ FAIL"
+        status = "PASS" if self.passed else "FAIL"
         msg = f"{status}: {self.name}"
         if self.error:
             msg += f"\n  Error: {self.error}"
