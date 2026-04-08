@@ -41,6 +41,13 @@ class DiagnosticEnv(EnvClient[DiagnosticAction, PatientObservation, ClinicalStat
             obs = env.step(DiagnosticAction(...))
     """
     
+    @classmethod
+    async def from_docker_image(cls, image_name: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
+        """Create client connected to a running OpenEnv environment URL."""
+        if base_url is None:
+            base_url = os.getenv("ENV_URL", "ws://localhost:8000/ws")
+        return cls(base_url=base_url, **kwargs)
+    
     def _step_payload(self, action: DiagnosticAction) -> dict:
         """Convert action to JSON payload for server."""
         return {

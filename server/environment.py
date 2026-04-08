@@ -27,6 +27,7 @@ from server.medical_data import (
     calculate_test_reward,
     calculate_diagnosis_accuracy,
     get_patient_response,
+    normalize_test_name,
 )
 
 
@@ -236,13 +237,17 @@ class MedicalDiagnosticEnvironment(Environment):
     # Action Processing
     # ─────────────────────────────────────────────────────────────────────
 
-    def _handle_question(self, question: str) -> tuple:
+    def _handle_question(self, question: Optional[str]) -> tuple:
         """
         Process a question about the patient.
         
         Returns:
         (reward, message, patient_response)
         """
+        if not question or not isinstance(question, str) or not question.strip():
+            message = "No valid question was provided. Please ask a clinical question."
+            return -0.05, message, None
+
         # Calculate reward for asking this question
         reward = calculate_question_reward(self._case_id, question)
         
@@ -263,13 +268,17 @@ class MedicalDiagnosticEnvironment(Environment):
         
         return reward, message, response
 
-    def _handle_test(self, test_name: str) -> tuple:
+    def _handle_test(self, test_name: Optional[str]) -> tuple:
         """
         Process a test order.
         
         Returns:
         (reward, message, test_result_dict)
         """
+        if not test_name or not isinstance(test_name, str) or not test_name.strip():
+            message = "No valid test name was provided. Please order a valid diagnostic test."
+            return -0.05, message, None
+
         # Calculate reward for ordering this test
         reward = calculate_test_reward(self._case_id, test_name)
         
@@ -280,9 +289,9 @@ class MedicalDiagnosticEnvironment(Environment):
         test_result_data = None
         matched_test_key = None
         
-        test_lower = test_name.lower()
+        test_lower = normalize_test_name(test_name)
         for test_key, result in case.get("test_results", {}).items():
-            if test_key.lower() in test_lower or test_lower in test_key.lower():
+            if test_key.lower() == test_lower or test_key.lower() in test_lower or test_lower in test_key.lower():
                 test_result_data = result
                 matched_test_key = test_key
                 break

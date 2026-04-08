@@ -31,10 +31,11 @@ from models import DiagnosticAction
 # CONFIGURATION
 # ==============================================================================
 
-# API Configuration from environment variables
+# Configuration
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.getenv("OPENAI_API_KEY")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+IMAGE_NAME = os.getenv("IMAGE_NAME", "medical-diagnostic-env:latest")
 ENV_URL = os.getenv("ENV_URL", "ws://localhost:8000/ws")
 BENCHMARK = os.getenv("BENCHMARK", "medical_diagnostic_env")
 
@@ -237,7 +238,7 @@ def build_conversation_history(episode_history: List[Dict]) -> List[Dict]:
 
 async def run_episode_async(
     client: OpenAI,
-    env_client: DiagnosticEnv,
+    image_name: str,
     difficulty: str,
     task_name: str,
 ) -> Dict:
@@ -257,7 +258,7 @@ async def run_episode_async(
     log_start(task_name, "medical_diagnostic_env", MODEL_NAME)
     
     # Reset environment
-    async with env_client as env:
+    async with DiagnosticEnv.from_docker_image(image_name=image_name, base_url=ENV_URL) as env:
         obs_result = await env.reset(difficulty=difficulty)
         obs = obs_result.observation if hasattr(obs_result, 'observation') else obs_result
         
@@ -393,6 +394,10 @@ async def run_all_tasks() -> Dict:
         print("ERROR: API key not found. Set HF_TOKEN, API_KEY, or OPENAI_API_KEY.", flush=True)
         return {}
     
+    if not ENV_URL:
+        print("ERROR: ENV_URL is not set. Set ENV_URL to the environment WebSocket URL.", flush=True)
+        return {}
+    
     # Initialize OpenAI client
     client = OpenAI(
         api_key=API_KEY,
@@ -412,12 +417,10 @@ async def run_all_tasks() -> Dict:
     for i, (task_name, difficulty) in enumerate(zip(TASK_NAMES, DIFFICULTY_LEVELS)):
         print(f"\n--- Task {i+1}/3: {difficulty} difficulty ---", flush=True)
         
-        env_client = DiagnosticEnv(base_url=ENV_URL)
-        
         try:
             result = await run_episode_async(
                 client,
-                env_client,
+                IMAGE_NAME,
                 difficulty=difficulty,
                 task_name=task_name,
             )
