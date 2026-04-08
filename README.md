@@ -1,127 +1,159 @@
 # Medical Diagnostic Environment
 
-# Medical Diagnostic Environment
+The Medical Diagnostic Environment is an OpenEnv-compatible reinforcement learning environment designed for training AI agents in clinical reasoning and medical diagnosis. It simulates realistic patient interactions where agents must ask questions, order tests, and make diagnoses through a structured, multi-step process.
 
-This repository provides a working OpenEnv-compatible medical diagnosis environment.
-It is built so external RL agents and model-based trainers can connect, take actions, and learn from step-by-step clinical interaction.
+## Project Overview
 
-## What this project includes
+This repository contains a complete, deployable environment for training and evaluating AI models in medical diagnosis tasks. The environment provides:
 
-- `server/environment.py`: core environment logic for patient cases, rewards, and episode flow
-- `server/app.py`: FastAPI app exposing OpenEnv endpoints and WebSocket access
-- `client.py`: Python client for WebSocket-based environment interaction
-- `training_wrapper.py`: minimal training wrapper that makes the environment easier to use in a trainer loop
-- `test_deployment.py`: runtime checker for local or deployed environment endpoints
-- `validate.py`: local self-check script for package imports, environment behavior, and core actions
-- `models.py`: shared action, observation, and state classes
-- `server/medical_data.py`: patient case data, questions, tests, and reward calculations
-- `openenv.yaml`: environment metadata and interface definition for OpenEnv
-- `docker-compose.yml`: local compose setup for development and testing
+- Realistic patient cases with varying difficulty levels
+- Step-by-step clinical decision-making process
+- Shaped rewards for intermediate actions and final outcomes
+- Support for both WebSocket and HTTP-based interactions
+- Docker-based deployment options including Hugging Face Spaces
 
-## Why this environment matters
+The environment is built using Python, FastAPI, and the OpenEnv framework, making it suitable for integration with various RL training pipelines.
 
-This is not just a demo. It is a compact clinical reasoning environment with:
+## Key Features
 
-- 3 difficulty tiers: easy, medium, hard
-- 6 realistic patient cases
-- multi-step reasoning over questions, tests, and diagnosis
-- shaped rewards for useful questions and tests plus final diagnosis accuracy
-- episode-level state and environment compatibility for training loops
+- **Multi-step Episodes**: Agents interact over up to 15 steps per patient case
+- **Three Difficulty Tiers**: Easy, medium, and hard cases with increasing complexity
+- **Realistic Medical Content**: Based on actual clinical scenarios and diagnostic workflows
+- **Shaped Rewards**: Immediate feedback for questions, tests, and final diagnoses
+- **Concurrent Sessions**: Supports multiple parallel training sessions
+- **Multiple Interfaces**: WebSocket for real-time training, HTTP for testing and evaluation
+- **Docker Deployment**: Easy containerization and cloud deployment
+- **Validation Tools**: Built-in scripts for testing and deployment verification
 
-It is intended to be used as a training environment backend, not as a complete RL agent.
+## Architecture
 
-## How the environment works
+The project is structured as follows:
 
-The environment exposes a standard OpenEnv API:
+### Core Components
 
-- `/reset`: start a new case and receive the initial observation
-- `/step`: execute one action and receive the next observation
-- `/state`: inspect the current hidden state for debugging
-- `/health`: confirm the server is alive
-- WebSocket endpoint at `/ws` for session-based agent training
+- **`server/environment.py`**: Implements the `MedicalDiagnosticEnvironment` class with reset/step/state logic
+- **`server/app.py`**: FastAPI application exposing OpenEnv endpoints
+- **`models.py`**: Defines action, observation, and state data structures
+- **`client.py`**: WebSocket client for environment interaction
+- **`training_wrapper.py`**: Simplified wrapper for training loops
 
-### Agent actions
+### Data and Logic
 
-Agents send one of these action types:
+- **`server/medical_data.py`**: Contains patient cases, question/test rewards, and diagnostic logic
+- **`openenv.yaml`**: Environment metadata and interface specification
 
-- `ask_question` — ask the patient a clinical question
-- `order_test` — request a diagnostic test result
-- `submit_diagnosis` — provide a final diagnosis
+### Deployment and Testing
 
-### Observation fields
+- **`Dockerfile`**: Production container configuration
+- **`server/Dockerfile`**: Development container configuration
+- **`docker-compose.yml`**: Local development setup
+- **`test_deployment.py`**: Deployment validation script
+- **`validate.py`**: Local environment testing
+- **`tests/`**: Unit tests
 
-Each step returns:
+## How It Works
 
-- `done`: whether the episode has ended
-- `reward`: immediate reward for the action
-- `message`: human-readable feedback
-- `patient_response`: answer to a clinical question
-- `test_result`: results of ordered tests
-- `questions_asked`: questions asked so far
-- `tests_completed`: tests ordered so far
-- `patient_data_revealed`: what the agent has learned
-- `steps_taken` and `max_steps`
+### Environment Interface
 
-## Setup
+The environment follows standard RL semantics:
 
-Requirements:
+- **Reset**: Initialize a new patient case and return initial observation
+- **Step**: Execute an agent action and return next observation with reward
+- **State**: Access internal environment state for debugging
 
-- Python 3.10+
-- Docker (optional but recommended for deployment)
+### Agent Actions
 
-### Install locally
+Agents can perform three types of actions:
 
-```bash
-git clone <repository-url>
-cd meta_synapse_hackathon
-python -m venv venv
-source venv/bin/activate
-pip install -r server/requirements.txt
-```
+1. **Ask Question**: Query the patient about symptoms or history
+2. **Order Test**: Request diagnostic test results
+3. **Submit Diagnosis**: Provide final diagnosis to end the episode
 
-### Validate locally
+### Observations
 
-```bash
-python validate.py
-```
+Each step returns a structured observation containing:
 
-That script checks imports, reset/step behavior, reward calculations, and environment state.
+- Episode status (done, steps taken)
+- Immediate reward
+- Human-readable feedback message
+- Patient responses to questions
+- Test results
+- Progress tracking (questions asked, tests completed)
+- Revealed patient data
 
-## Running locally
+### Reward Structure
 
-### Run server directly
+- **Question Rewards**: 0.01-0.05 for relevant clinical questions
+- **Test Rewards**: 0.05-0.10 for informative diagnostic tests
+- **Diagnosis Rewards**: 0.0-1.0 based on accuracy and process quality
+- **Penalties**: For irrelevant actions or exceeding step limits
 
+## Installation and Setup
+
+### Requirements
+
+- Python 3.10 or higher
+- Docker (recommended for deployment)
+
+### Local Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd meta_synapse_hackathon
+   ```
+
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r server/requirements.txt
+   ```
+
+4. Validate the installation:
+   ```bash
+   python validate.py
+   ```
+
+## Running Locally
+
+### Direct Python Execution
+
+Start the server:
 ```bash
 cd server
 python app.py
 ```
 
-Then open:
+Access points:
+- Health check: `http://localhost:8000/health`
+- API documentation: `http://localhost:8000/docs`
+- WebSocket endpoint: `ws://localhost:8000/ws`
 
-- `http://localhost:8000/health`
-- `http://localhost:8000/docs`
-- `ws://localhost:8000/ws`
+### Docker (Development)
 
-### Run with Docker locally
-
+Build and run:
 ```bash
 docker build -t medical-diagnostic-env -f server/Dockerfile .
 docker run -p 8000:8000 medical-diagnostic-env
 ```
 
-### Run with Docker Compose
+### Docker Compose
 
+For a complete local setup:
 ```bash
 docker-compose up --build
 ```
 
-Access the same endpoints at `localhost:8000`.
+## Using the Client
 
-## Client usage
+The `client.py` module provides the `DiagnosticEnv` class for interacting with the environment.
 
-The `client.py` module provides a `DiagnosticEnv` class with async and sync usage.
-
-### Async example
+### Asynchronous Usage
 
 ```python
 import asyncio
@@ -130,15 +162,24 @@ from models import DiagnosticAction
 
 async def main():
     async with DiagnosticEnv(base_url="ws://localhost:8000/ws") as env:
+        # Reset for a new case
         obs = await env.reset(difficulty="easy")
-        print(obs.message)
-        result = await env.step(DiagnosticAction(action_type="ask_question", question="Do you have a fever?"))
-        print(result.message)
+        print(f"Initial observation: {obs.message}")
+        
+        # Take an action
+        action = DiagnosticAction(
+            action_type="ask_question",
+            question="Do you have a fever?"
+        )
+        result = await env.step(action)
+        print(f"Response: {result.observation.message}")
+        
+        # Continue interacting...
 
 asyncio.run(main())
 ```
 
-### Sync example
+### Synchronous Usage
 
 ```python
 from client import DiagnosticEnv
@@ -147,129 +188,242 @@ from models import DiagnosticAction
 with DiagnosticEnv(base_url="ws://localhost:8000/ws").sync() as env:
     obs = env.reset(difficulty="easy")
     print(obs.message)
-    result = env.step(DiagnosticAction(action_type="order_test", test_name="CBC"))
+    
+    action = DiagnosticAction(action_type="order_test", test_name="CBC")
+    result = env.step(action)
     print(result.observation.message)
 ```
 
-## Training wrapper
+## Training Integration
 
-`training_wrapper.py` provides a thin wrapper to make the environment easier to consume in an async training loop.
+The `training_wrapper.py` provides a minimal interface for training loops:
 
-It is intentionally minimal and meant to be paired with your own RL algorithm.
+```python
+from training_wrapper import TrainingEnv
 
-```bash
-python training_wrapper.py
+async with TrainingEnv() as env:
+    obs = await env.reset(difficulty="easy")
+    
+    while not obs.done:
+        # Your agent logic here
+        action_type = "ask_question"  # or "order_test" or "submit_diagnosis"
+        question = "Do you have chest pain?"  # if asking question
+        test_name = None  # if ordering test
+        diagnosis = None  # if submitting diagnosis
+        
+        obs = await env.step(
+            action_type=action_type,
+            question=question,
+            test_name=test_name,
+            diagnosis=diagnosis
+        )
+        
+        # Update your model with obs.reward, etc.
 ```
 
-## Docker and Hugging Face deployment
+This wrapper is designed to be integrated with your RL training pipeline.
 
-This repo includes:
+## Deployment
 
-- `server/Dockerfile`: local development container using port `8000`
-- `Dockerfile`: root-level container using port `7860` for production deployment
+### Docker Deployment
 
-### Deploy to Hugging Face Spaces
-
-1. Create a new Space using Docker.
-2. Upload this repository.
-3. The Space should build automatically.
-4. Verify the deployed runtime.
-
-The included `test_deployment.py` is the recommended way to confirm the deployed Space is healthy.
-
-> Important: because the environment uses stateful HTTP behavior, the deployed container should run a single Uvicorn worker.
-
-## Deployment testing
-
-Install the runtime checker:
+#### Local Docker
 
 ```bash
-pip install requests
+# Build production image
+docker build -t medical-diagnostic-env .
+
+# Run container
+docker run -p 7860:7860 medical-diagnostic-env
 ```
 
-Run the checker locally:
+#### Docker Compose
 
 ```bash
-python test_deployment.py
+docker-compose up --build
 ```
 
-Run the checker against a deployed Space:
+### Hugging Face Spaces Deployment
 
-```bash
-OPENENV_BASE_URL="https://your-space-domain.hf.space" python test_deployment.py
+Hugging Face Spaces provides free hosting for machine learning demos and environments.
+
+#### Creating a Space
+
+1. Go to [Hugging Face Spaces](https://huggingface.co/spaces)
+2. Click "Create new Space"
+3. Choose:
+   - **Space name**: Choose a unique name (e.g., `your-username/medical-diagnostic-env`)
+   - **License**: MIT (or your preferred license)
+   - **SDK**: Docker
+   - **Docker Template**: Blank (we provide our own Dockerfile)
+4. Click "Create Space"
+
+#### Uploading Your Code
+
+1. Clone your repository locally if not already done
+2. Copy all files from this repository to your Space
+3. The Space will automatically detect the `Dockerfile` and start building
+
+#### Accessing Your Deployed Space
+
+Once built, your Space will be available at:
+```
+https://your-username-medical-diagnostic-env.hf.space
 ```
 
-That script validates `/health`, `/openapi.json`, `/reset`, `/step`, and `/state`.
+Available endpoints:
+- Health: `https://your-username-medical-diagnostic-env.hf.space/health`
+- API Docs: `https://your-username-medical-diagnostic-env.hf.space/docs`
+- WebSocket: `wss://your-username-medical-diagnostic-env.hf.space/ws`
 
-## Testing
+#### Using the Deployed Environment
 
-Run unit tests:
+You can interact with the deployed environment using the same client code, just change the URL:
 
-```bash
-python -m pytest tests/
+```python
+from client import DiagnosticEnv
+
+# For deployed Space
+async with DiagnosticEnv(base_url="wss://your-username-medical-diagnostic-env.hf.space/ws") as env:
+    obs = await env.reset(difficulty="medium")
+    # ... your training code
 ```
 
-Run the environment validation suite:
+Or use HTTP endpoints directly:
 
+```python
+import requests
+
+base_url = "https://your-username-medical-diagnostic-env.hf.space"
+
+# Reset
+response = requests.post(f"{base_url}/reset", json={})
+print(response.json())
+
+# Step
+action = {"action": {"action_type": "ask_question", "question": "Any pain?"}}
+response = requests.post(f"{base_url}/step", json=action)
+print(response.json())
+```
+
+#### Important Notes for HF Spaces
+
+- The environment maintains state across HTTP requests, so the deployment uses a single Uvicorn worker
+- For high-traffic usage, consider upgrading to a paid Space plan
+- Spaces have usage limits; monitor your Space's analytics
+
+## Testing and Validation
+
+### Local Validation
+
+Run the comprehensive validation suite:
 ```bash
 python validate.py
 ```
 
-## Notes for judges
+This checks:
+- Package imports
+- Environment initialization
+- Action processing (questions, tests, diagnoses)
+- Reward calculations
+- State management
 
-This repository is ready to serve as an environment backend for training.
-Judges can run their own policy optimization or GPRO-style training algorithm by connecting to the environment and exchanging actions and observations.
+### Unit Tests
 
-### What judges will need to provide
-
-- their own training/agent loop
-- an action policy that sends `DiagnosticAction` objects
-- a mechanism to handle observations and update model weights
-
-### What this repo provides
-
-- environment logic
-- server endpoints for HTTP and WebSocket interaction
-- a reusable Python client
-- deployment and validation helpers
-
-## Is this hackathon-ready?
-
-Yes — the environment in this repo is ready to be submitted as the environment component.
-It is not a full RL agent, but it is ready to host training and evaluation.
-
-If the hackathon judges want to run their own training algorithms, they can use this repo purely as the environment and connect to it via:
-
-- `ws://<host>/ws` for WebSocket sessions
-- `/reset`, `/step`, `/state` for standard environment loops
-
-That means the repo is suitable as an environment service, but the judges will still need to provide the actual training algorithm or agent logic on their side.
-
-## Project structure
-
+Run the test suite:
+```bash
+python -m pytest tests/
 ```
-├── client.py
-├── docker-compose.yml
-├── Dockerfile
-├── inference.py
-├── models.py
-├── openenv.yaml
-├── pyproject.toml
-├── README.md
-├── validate.py
-├── test_deployment.py
-├── training_wrapper.py
-├── server/
-│   ├── __init__.py
-│   ├── app.py
-│   ├── Dockerfile
-│   ├── environment.py
-│   ├── medical_data.py
-│   └── requirements.txt
-└── tests/
-    └── test_environment.py
+
+### Deployment Testing
+
+Test a deployed instance:
+```bash
+pip install requests
+python test_deployment.py --url https://your-space.hf.space
+```
+
+This validates:
+- Health endpoint
+- API schema
+- Reset functionality
+- Step execution
+- State inspection
+
+## API Reference
+
+### HTTP Endpoints
+
+- `GET /health`: Health check
+- `GET /docs`: Interactive API documentation
+- `GET /openapi.json`: OpenAPI specification
+- `POST /reset`: Reset environment (optional: `{"difficulty": "easy|medium|hard"}`)
+- `POST /step`: Execute action (requires: `{"action": DiagnosticAction}`)
+- `GET /state`: Get current environment state
+
+### WebSocket Endpoint
+
+- `ws://host:port/ws`: WebSocket connection for session-based interaction
+
+### Data Models
+
+#### DiagnosticAction
+```python
+{
+    "action_type": "ask_question" | "order_test" | "submit_diagnosis",
+    "question": str | None,
+    "test_name": str | None,
+    "diagnosis": str | None
+}
+```
+
+#### PatientObservation
+```python
+{
+    "done": bool,
+    "reward": float | None,
+    "message": str,
+    "patient_response": dict | None,
+    "test_result": dict | None,
+    "questions_asked": list[str],
+    "tests_completed": list[str],
+    "patient_data_revealed": dict,
+    "steps_taken": int,
+    "max_steps": int
+}
+```
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+### Development Setup
+
+```bash
+# Install development dependencies
+pip install -e .[dev]
+
+# Run tests
+python -m pytest
+
+# Format code
+black .
+ruff --fix .
 ```
 
 ## License
 
-MIT License — see `LICENSE`.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For questions or issues:
+- Open an issue on GitHub
+- Check the API documentation at `/docs`
+- Review the validation and testing scripts for examples
