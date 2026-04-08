@@ -1,7 +1,7 @@
 """
 inference.py — Baseline inference script for the Medical Diagnostic Environment.
-
 This script demonstrates how to run the environment with an LLM (using OpenAI client)
+
 and logs results in the exact format required by the hackathon.
 
 Format requirements:
@@ -75,7 +75,6 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
         f"[END] success={success_val} steps={steps} score={score:.3f} rewards={rewards_str}",
         flush=True,
     )
-
 
 # ==============================================================================
 # LLM INTERACTION

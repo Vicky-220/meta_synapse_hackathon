@@ -211,7 +211,6 @@ class MedicalDiagnosticEnvironment(Environment):
             max_steps=self.MAX_STEPS,
         )
 
-    @property
     def state(self) -> ClinicalState:
         """
         Return complete internal state (includes hidden information).
@@ -331,21 +330,19 @@ class MedicalDiagnosticEnvironment(Environment):
         case = PATIENT_CASES[self._case_id]
         true_diagnosis = case["true_diagnosis"]
         
-        if accuracy == 1.0:
-            message = f"✓ Correct diagnosis: {diagnosis}\nMatches the true diagnosis: {true_diagnosis}"
+        # Change the if/elif chain to use >= comparisons:
+        if accuracy >= 0.95:
             reward = 1.0
-        elif accuracy == 0.7:
-            message = f"Partially correct: {diagnosis}\nTrue diagnosis: {true_diagnosis}\nYour answer was acceptable but not exact."
-            reward = 0.7
-        elif accuracy == 0.4:
-            message = f"Diagnosis: {diagnosis}\nTrue diagnosis: {true_diagnosis}\nSome overlap but missing key differentiators."
-            reward = 0.4
+            message = f"Correct diagnosis: {diagnosis}"
+        elif accuracy >= 0.7:
+            reward = accuracy
+            message = f"Acceptable diagnosis: {diagnosis}. True: {true_diagnosis}"
         elif accuracy >= 0.3:
-            message = f"Diagnosis: {diagnosis}\nTrue diagnosis: {true_diagnosis}\nPartially correct. Important features missed."
-            reward = 0.3
+            reward = accuracy
+            message = f"Partially correct. True: {true_diagnosis}"
         else:
-            message = f"Diagnosis: {diagnosis}\nTrue diagnosis: {true_diagnosis}\nThe diagnosis does not match. Consider differential diagnosis."
             reward = 0.0
+            message = f"Incorrect. True: {true_diagnosis}"
         
         self._episode_reward_breakdown["diagnosis_reward"] = reward
         
@@ -362,11 +359,10 @@ class MedicalDiagnosticEnvironment(Environment):
     # ─────────────────────────────────────────────────────────────────────
 
     def _select_case_by_difficulty(self, difficulty: str) -> str:
-        """Select a random case matching the difficulty level."""
-        cases = [c for c in PATIENT_CASES.values() if c["difficulty"] == difficulty]
-        if not cases:
-            cases = list(PATIENT_CASES.values())
-        return random.choice(cases)["case_id"]
+        matching_keys = [k for k, v in PATIENT_CASES.items() if v["difficulty"] == difficulty]
+        if not matching_keys:
+            matching_keys = list(PATIENT_CASES.keys())
+        return random.choice(matching_keys)
 
     def _build_patient_data_view(self, case: Dict) -> Dict:
         """

@@ -1,22 +1,9 @@
-"""
-server/medical_data.py — Knowledge base and patient cases for the Medical Diagnostic Environment.
-
-This module contains:
-1. Patient cases loaded from real Hugging Face datasets (MedMCQA, BigBio MedQA)
-2. Medical knowledge base for question/test evaluation
-3. Grading logic for diagnoses using LLM-based reward judgments
-4. Innovative reward calculation using AI judgment instead of hardcoded rules
-"""
-
 import os
 import random
 from typing import Dict, List, Tuple, Optional
 from datasets import load_dataset
-import openai
 from functools import lru_cache
 
-# Set OpenAI API key from environment
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # ==============================================================================
 # LOAD REAL DATASETS FROM HUGGING FACE
@@ -43,124 +30,32 @@ def load_medical_datasets() -> Dict:
 # INNOVATIVE REWARD SYSTEM USING LLM JUDGMENT
 # ==============================================================================
 
-@lru_cache(maxsize=1000)
-def get_llm_reward_score(prompt: str) -> float:
-    """
-    Get reward score from LLM judgment.
-    
-    This innovative approach uses AI to evaluate the quality of diagnostic actions
-    rather than hardcoded rules, making the reward system adaptive and context-aware.
-    """
-    if not openai.api_key:
-        # Fallback to random score if no API key
-        return random.uniform(0.0, 1.0)
-    
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a medical expert evaluating diagnostic actions. Rate the quality of the action on a scale from 0.0 to 1.0, where 1.0 is excellent and 0.0 is poor. Respond with only the number."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=5,
-            temperature=0.1
-        )
-        score_text = response.choices[0].message.content.strip()
-        # Extract number from response
-        import re
-        match = re.search(r'(\d+\.?\d*)', score_text)
-        if match:
-            score = float(match.group(1))
-            return max(0.0, min(1.0, score))
-        else:
-            return 0.5
-    except Exception as e:
-        print(f"LLM reward error: {e}")
-        return 0.5  # Neutral score on error
+
+RELEVANT_QUESTION_KEYWORDS = {
+    "easy_flu": ["fever", "cough", "ache", "fatigue", "onset", "symptom", "contact", "vaccine", "temperature"],
+    # ... per case
+}
 
 def calculate_question_reward(case_id: str, question: str) -> float:
-    """
-    Calculate reward for asking a question using LLM judgment with access to true diagnosis.
+    keywords = RELEVANT_QUESTION_KEYWORDS.get(case_id, [])
+    q_lower = question.lower()
+    matches = sum(1 for kw in keywords if kw in q_lower)
+    if matches >= 2: return 0.08
+    if matches == 1: return 0.05
+    return 0.01
 
-    Uses AI to evaluate question relevance in medical context, considering the actual diagnosis.
-    """
+def calculate_diagnosis_accuracy(case_id: str, submitted: str) -> float:
     case = PATIENT_CASES.get(case_id, {})
-    presentation = case.get("presentation", "Unknown patient presentation")
-    true_diagnosis = case.get("true_diagnosis", "Unknown diagnosis")
-
-    prompt = f"""
-Patient presentation: {presentation}
-True diagnosis: {true_diagnosis}
-
-Question asked: "{question}"
-
-Rate how relevant this question is for diagnosing this patient on a scale from 0.0 to 1.0.
-Consider:
-- Does it help narrow down the differential diagnosis?
-- Is it clinically appropriate?
-- Does it address key symptoms or risk factors?
-
-Score (0.0-1.0):
-"""
-
-    score = get_llm_reward_score(prompt)
-    return score * 0.1  # Scale to 0-0.1 range for questions
-
-def calculate_test_reward(case_id: str, test_name: str) -> float:
-    """
-    Calculate reward for ordering a test using LLM judgment with access to true diagnosis.
-
-    Uses AI to evaluate test appropriateness and diagnostic value, considering the actual diagnosis.
-    """
-    case = PATIENT_CASES.get(case_id, {})
-    presentation = case.get("presentation", "Unknown patient presentation")
-    true_diagnosis = case.get("true_diagnosis", "Unknown diagnosis")
-
-    prompt = f"""
-Patient presentation: {presentation}
-True diagnosis: {true_diagnosis}
-
-Test ordered: {test_name}
-
-Rate how appropriate and valuable this test is for this patient's diagnosis on a scale from 0.0 to 1.0.
-Consider:
-- Is this test indicated based on the presentation?
-- Will it help confirm or rule out key diagnoses?
-- Is it cost-effective and necessary?
-
-Score (0.0-1.0):
-"""
-
-    score = get_llm_reward_score(prompt)
-    return score * 0.15  # Scale to 0-0.15 range for tests
-
-def calculate_diagnosis_accuracy(case_id: str, submitted_diagnosis: str) -> float:
-    """
-    Calculate diagnosis accuracy using LLM judgment.
-    
-    Innovative: AI evaluates diagnostic accuracy considering differentials and context.
-    """
-    case = PATIENT_CASES.get(case_id, {})
-    true_diagnosis = case.get("true_diagnosis", "").lower()
-    presentation = case.get("presentation", "")
-    
-    prompt = f"""
-Patient presentation: {presentation}
-True diagnosis: {true_diagnosis}
-Submitted diagnosis: {submitted_diagnosis}
-
-Rate the accuracy of the submitted diagnosis on a scale from 0.0 to 1.0.
-Consider:
-- Is it the exact correct diagnosis? (1.0)
-- Is it an acceptable differential? (0.7-0.9)
-- Is it partially correct? (0.3-0.6)
-- Is it completely wrong? (0.0-0.2)
-
-Score (0.0-1.0):
-"""
-    
-    score = get_llm_reward_score(prompt)
-    return score
+    s = submitted.lower().strip()
+    true = case.get("true_diagnosis", "").lower()
+    if s == true: return 1.0
+    for acceptable in case.get("correct_diagnoses", []):
+        if acceptable.lower() in s or s in acceptable.lower(): return 1.0
+    # partial credit
+    true_words = set(true.split())
+    sub_words = set(s.split())
+    overlap = len(true_words & sub_words) / max(len(true_words), 1)
+    return round(min(overlap, 0.7), 2)
 
 # ==============================================================================
 # PATIENT CASES DATABASE (FORMATTED FROM REAL DATASETS)
@@ -254,10 +149,31 @@ def generate_patient_cases_from_datasets() -> Dict:
 
     return cases
 
-# Load real cases only
-real_cases = generate_patient_cases_from_datasets()
+STATIC_PATIENT_CASES = {
+    "easy_flu": {
+        "case_id": "easy_flu",
+        "difficulty": "easy",
+        "true_diagnosis": "Seasonal Influenza",
+        "age": 28, "gender": "Female",
+        "presentation": "Patient presents with sudden fever (38.9°C), body aches, headache, fatigue, and dry cough for 2 days. No shortness of breath.",
+        "hidden_findings": {"fever": "38.9°C", "duration": "2 days", "onset": "sudden"},
+        "test_results": {
+            "rapid_flu_test": {"result": "Positive for Influenza A", "interpretation": "Positive Influenza A — confirms influenza diagnosis"},
+            "cbc": {"result": "WBC 9.2, lymphocytosis", "interpretation": "Mild lymphocytosis consistent with viral infection"},
+        },
+        "correct_diagnoses": ["Seasonal Influenza", "Influenza A", "Flu"],
+        "differential_diagnoses": ["COVID-19", "Common Cold", "Strep Throat"],
+    },
+    "easy_uti": {
+        "case_id": "easy_uti",
+        "difficulty": "easy",
+        "true_diagnosis": "Urinary Tract Infection",
+    },
+}
 
-PATIENT_CASES = real_cases
+real_cases = generate_patient_cases_from_datasets()
+# Merge: static cases are always available, real cases supplement
+PATIENT_CASES = {**STATIC_PATIENT_CASES, **real_cases}
 
 
 # ==============================================================================================================================
@@ -282,13 +198,3 @@ def get_patient_response(case_id: str, question: str) -> str:
     if "symptom" in question_lower or "feel" in question_lower:
         return "I have concerning symptoms right now."
     return "I'm not sure about that. Can you ask in a different way?"
-
-
-# ==============================================================================================================================
-# MEDICAL KNOWLEDGE BASE (DEPRECATED - Now using LLM-based rewards)
-# ==============================================================================================================================
-
-# Note: The old hardcoded knowledge base has been replaced with LLM-based reward judgment
-# for more innovative and adaptive evaluation of diagnostic actions.
-
-# The patient response generator is dataset-driven and does not depend on legacy sample cases.
