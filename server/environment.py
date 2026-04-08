@@ -82,6 +82,10 @@ class MedicalDiagnosticEnvironment(Environment):
             "diagnosis_reward": 0.0,
             "efficiency_penalty": 0.0,
         }
+        
+        # Initialize a default episode so stateless HTTP /step can operate
+        # on a fresh environment when the server creates a new instance.
+        self.reset(difficulty="easy")
 
     @property
     def current_case_id(self) -> str:
@@ -212,6 +216,7 @@ class MedicalDiagnosticEnvironment(Environment):
             max_steps=self.MAX_STEPS,
         )
 
+    @property
     def state(self) -> ClinicalState:
         """
         Return complete internal state (includes hidden information).

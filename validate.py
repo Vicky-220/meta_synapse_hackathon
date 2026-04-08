@@ -199,7 +199,7 @@ def validate_state_property() -> ValidationResult:
     try:
         env = MedicalDiagnosticEnvironment()
         env.reset(difficulty="easy")
-        state = env.state()
+        state = env.state
         assert state is not None
         assert hasattr(state, "patient_id")
         assert hasattr(state, "step_count")
