@@ -20,12 +20,9 @@ from models import DiagnosticAction, PatientObservation
 from environment import MedicalDiagnosticEnvironment
 
 
-# Create the environment instance
-env = MedicalDiagnosticEnvironment()
-
 # Create FastAPI app with all endpoints
 app = create_fastapi_app(
-    env,
+    MedicalDiagnosticEnvironment,  # Pass the class, not an instance
     DiagnosticAction,
     PatientObservation,
     max_concurrent_envs=100,  # Support up to 100 parallel training sessions
