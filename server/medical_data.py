@@ -44,7 +44,7 @@ def load_medical_datasets() -> Dict:
         return {}
 
 # ==============================================================================
-# INNOVATIVE REWARD SYSTEM USING LLM JUDGMENT
+# DETERMINISTIC REWARD FUNCTIONS FOR TRAINING
 # ==============================================================================
 
 
